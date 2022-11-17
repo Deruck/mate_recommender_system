@@ -18,7 +18,7 @@
                 <mxCell id="13" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;rounded=0;" parent="1" source="3" target="9" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="3" value="原始数据" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="3" value="数据加载和预处理" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="160" y="710" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="7" style="edgeStyle=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="1" source="6" edge="1">
@@ -46,6 +46,12 @@
                 </mxCell>
                 <mxCell id="14" value="&lt;ul&gt;&lt;li&gt;数据处理模块：从csv数据到模型输入形式&lt;/li&gt;&lt;li&gt;模型模块&lt;/li&gt;&lt;ul&gt;&lt;li&gt;&lt;span&gt;需要兼容sklearn和深度学习模型&lt;/span&gt;&lt;/li&gt;&lt;li&gt;&lt;span&gt;一个模型包含配套训练、保存模型、加载模型、数据编码逻辑&lt;/span&gt;&lt;/li&gt;&lt;/ul&gt;&lt;li&gt;效果评估模块：整合推理结果、多模型比较、多变量比较等&lt;/li&gt;&lt;/ul&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;align=left;verticalAlign=top;horizontal=1;spacingRight=35;" vertex="1" parent="1">
                     <mxGeometry x="410" y="310" width="300" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="15" target="3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="数据文件" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;" vertex="1" parent="1">
+                    <mxGeometry x="160" y="830" width="120" height="80" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
