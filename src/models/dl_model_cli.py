@@ -13,6 +13,7 @@ from model_arguments import DL_ModelArgs
 class DLModelCli(BaseModelCli):
     
     def __init__(self, model: MODEL):
+        self._model_name = model.value
         self._model = get_dl_model(model)
         
     def train(self, model_args: DL_ModelArgs, data_module: BaseDataModule):
