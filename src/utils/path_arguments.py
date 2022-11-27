@@ -39,15 +39,15 @@ class PathArgs(BaseArguments):
     
     @property
     def train_dates_csv_file(self) -> FilePath:
-        return self.pre_processed_data_dir / "dates.csv"
+        return self.pre_processed_data_dir / "dates_train.csv"
     
     @property
     def val_dates_csv_file(self) -> FilePath:
-        return self.pre_processed_data_dir / "dates.csv"
+        return self.pre_processed_data_dir / "dates_val.csv"
     
     @property
     def test_dates_csv_file(self) -> FilePath:
-        return self.pre_processed_data_dir / "dates.csv"
+        return self.pre_processed_data_dir / "dates_test.csv"
     
     @property
     def unlabled_dates_csv_file(self) -> FilePath:
@@ -60,6 +60,10 @@ class PathArgs(BaseArguments):
     @property
     def data_encoder_file(self) -> FilePath:
         return self.out_dir / "data_encoder.bin"
+    
+    @property
+    def model_save_dir(self) -> DirectoryPath:
+        return self.out_dir / "models"
 
     def _arg_name(self):
         return "通用路径参数"
@@ -69,7 +73,8 @@ class PathArgs(BaseArguments):
             self.data_dir, 
             self.log_dir, 
             self.out_dir,
-            self.processed_data_dir
+            self.processed_data_dir,
+            self.model_save_dir
         ):
             if not dir.exists():
                 dir.mkdir()

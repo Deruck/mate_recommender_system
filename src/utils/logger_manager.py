@@ -1,13 +1,14 @@
 import os
 import logging
 import datetime
+from pathlib import Path
 
 logger_name = "mate_rec_logger"
 
 class LoggerManager:
     
     @staticmethod
-    def set_logger(log_file_path: str):
+    def set_logger(log_file_path: Path):
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.DEBUG)
         file_handler = logging.FileHandler(log_file_path, mode='w')

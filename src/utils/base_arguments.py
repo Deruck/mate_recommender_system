@@ -56,7 +56,7 @@ class BaseArguments(Namespace, metaclass=ABCMeta):
         _, left_params = parser.parse_known_args(parse_list, namespace=self)
         for arg_name, arg_cls in self._sub_args_dict.items():
             setattr(self, arg_name, arg_cls().parse_args(left_params))
-        self._after_parse
+        self._after_parse()
         return self
     
     def _add_args(self, parser: GeneralParser) -> None:

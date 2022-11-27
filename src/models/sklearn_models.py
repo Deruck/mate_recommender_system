@@ -41,24 +41,19 @@ class XGBoost(BaseSKLModel):
     @property
     def other_params(self) -> Dict[str, float]:
         return {
-            'eta': 0.3,
-            'gamma': 0, 
-            'min_child_weight': 1,
-            'colsample_bytree': 1, 
-            'colsample_bylevel': 1, 
-            'subsample': 1, 
-            'reg_lambda': 1, 
-            'reg_alpha': 0,
             'seed': 33
         }
         
     @property
     def gs_params(self) -> Dict[str, List[float]]:
         return {
-            'n_estimators': [10, 50, 100, 200, 500], 
-            'max_depth': [2, 3, 5, 8, 15], 
+            'n_estimators': [5000, 5100, 5200, 5300], 
+            'max_depth': [5],
+            "gamma": [0],
+            "eta": [0.2, 0.1, 0.05, 0.01],
+            "lambda": [1.1, 1.15, 1.2],
+            "subsample": [0.85]
         }
-        
     
 #############################################################################################
 ## Apis

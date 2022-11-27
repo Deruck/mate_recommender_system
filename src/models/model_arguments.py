@@ -6,3 +6,6 @@ class DL_ModelArgs(BaseModelArgs):
     epochs = 10
     warmup_epochs = 10
     batch_size = 32
+    
+class SK_ModelArgs(BaseModelArgs):
+    ...

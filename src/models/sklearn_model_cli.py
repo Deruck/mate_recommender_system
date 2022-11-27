@@ -5,6 +5,8 @@ import numpy as np
 from copy import deepcopy
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
+from json import dumps
+import pickle
 
 from data_module import BaseDataModule
 from data_module.entities import DateList, UserDict
@@ -23,7 +25,8 @@ class SKLModelCli(BaseModelCli):
         self._model_name = model.value
         self._model = get_sklearn_model(model)
         
-    def train(self, model_args: DL_ModelArgs, data_module: BaseDataModule):
+    def train(self, model_args: DL_ModelArgs, data_module: BaseDataModule, model_save_dir):
+        logger.info(f"training model: {self._model_name}")
         date_list = data_module.train_date_list + data_module.val_date_list
         user_dict = deepcopy(data_module.train_encoded_user_info)
         user_dict.update(data_module.val_encoded_user_info)
@@ -37,14 +40,24 @@ class SKLModelCli(BaseModelCli):
             scoring="f1",
             n_jobs=-1,
             cv=5,
-            verbose=1
+            verbose=10,
         )
         gs.fit(x, y)
-        best: ClassifierProto = gs.best_estimator_ # type: ignore
-        predict = best.predict(x_test)
+        best_model: ClassifierProto = gs.best_estimator_ # type: ignore
+        best_model.fit(x, y)
+        predict = best_model.predict(x_test)
         acc = accuracy_score(predict, y_test)
+        logger.info(
+            f"""best model params
+            {dumps(gs.best_params_, indent=2)}
+            """
+        )
         logger.info(f"best {self._model_name} estimator acc: {acc:.4f}")
-        return super().train(model_args, data_module)
+        save_path = model_save_dir /f"{self._model_name}.bin"
+        logger.info(f"save model at {save_path}")
+        with open(save_path, "wb") as f: 
+            pickle.dump(best_model, f)
+        
     
     def load_model(self, model_save_path: FilePath):
         return super().load_model(model_save_path)

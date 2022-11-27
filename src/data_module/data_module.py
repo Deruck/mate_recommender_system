@@ -9,7 +9,9 @@ from data_encoder import BaseDataEncoder, ZScoreDataEncoder
 from data_reader import DataReader
 from datasets import TrainDataset, InfDataset
 from entities import UserDict, DateList, UserDict
+from utils import LoggerManager
 
+logger = LoggerManager.get_logger()
 
 class BaseDataModule(LightningDataModule):
     
@@ -30,6 +32,7 @@ class BaseDataModule(LightningDataModule):
         self.test_user_info = self._get_user_dict_for_date_list(self.test_date_list)
         
         self._data_encoder = self._data_encoder_cls()
+        logger.info("normalizing data...")
         self.train_encoded_user_info = self._data_encoder.fit_transform(self.train_user_info)
         self.val_encoded_user_info = self._data_encoder.transform(self.val_user_info)
         self.test_encoded_user_info = self._data_encoder.transform(self.test_user_info)

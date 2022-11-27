@@ -35,9 +35,9 @@ if __name__ == "__main__":
     sys.path.append(os.path.dirname(__file__))
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
     
-    from utils.path_arguments import PathArguments
+    from utils.path_arguments import PathArgs
     
-    args = PathArguments().parse_args()
+    args = PathArgs().parse_args()
     
     user_dict = DataReader.load_user_dict(args.users_csv_file)
     date_list = DataReader.load_date_list(args.dates_csv_file)
