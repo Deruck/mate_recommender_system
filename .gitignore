@@ -1,4 +1,8 @@
 test*
 __pycache__
 /logs*
-/out*
+tensor_board_logs
+/debug*
+*.ckpt
+*.bin
+.vscode

@@ -33,3 +33,7 @@ class LoggerManager:
     @staticmethod
     def get_logger() -> logging.Logger:
         return logging.getLogger(logger_name)
+    
+    @staticmethod
+    def get_log_file() -> Path:
+        return Path(logging.getLogger(logger_name).handlers[0].baseFilename) # type: ignore

@@ -2,13 +2,13 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from pydantic import FilePath
 from abc import ABCMeta, abstractproperty
-from typing import Type, Set, Tuple
+from typing import Type, Set, Tuple, Dict
 import pickle
 
 from data_encoder import BaseDataEncoder, ZScoreDataEncoder
 from data_reader import DataReader
 from datasets import TrainDataset, InfDataset
-from entities import UserDict, DateList, UserDict
+from entities import UserDict, DateList, UserDict, CATEGORICAL_UNIQUE
 from utils import LoggerManager
 
 logger = LoggerManager.get_logger()
@@ -43,11 +43,11 @@ class BaseDataModule(LightningDataModule):
     
     def val_dataloader(self, batch_size: int = 32, num_workers: int = 6) -> DataLoader:
         dataset = TrainDataset(self.val_date_list, self.val_encoded_user_info)
-        return DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        return DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     
     def test_dataloader(self, batch_size: int = 32, num_workers: int = 6) -> DataLoader:
         dataset = TrainDataset(self.test_date_list, self.test_encoded_user_info)
-        return DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        return DataLoader(dataset, batch_size=batch_size, num_workers=num_workers)
     
     def dump_data_encoder(self, dump_path: FilePath) -> None:
         with open(dump_path, "wb") as f:
@@ -71,6 +71,19 @@ class BaseDataModule(LightningDataModule):
             user_id_set.add(date.iid)
             user_id_set.add(date.pid)
         return {user_id: self.user_info_dict[user_id] for user_id in user_id_set}
+    
+    @property
+    def cate_feature_dict(self) -> Dict[int, int]:
+        res = {}
+        sample_user = list(self.user_info_dict.values())[0]
+        for idx, variable in enumerate(sample_user.dict().keys()):
+            if variable in CATEGORICAL_UNIQUE.keys():
+                res[idx] = CATEGORICAL_UNIQUE[variable]
+        return res
+    
+    @property
+    def feature_num(self) -> int:
+        return len(list(list(self.user_info_dict.values())[0].dict().values()))
     
     @abstractproperty
     def _data_encoder_cls(self) -> Type[BaseDataEncoder]: ...

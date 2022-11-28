@@ -81,6 +81,14 @@ CATEGORICAL_VARIABLES = (
 
 NUMERICAL_VARIABLES = tuple(set(User.__fields__.keys()).difference(set(CATEGORICAL_VARIABLES)))
 
+CATEGORICAL_UNIQUE = {
+    "gender": 2,
+    "race": 6,
+    "field_cd": 18,
+    "goal": 6,
+    "career_c": 17
+}
+
 #############################################################################################
 ## 数据编码
 #############################################################################################
@@ -196,25 +204,25 @@ class UserTensor(TypedDict):
     amb5_1: Tensor
 
 class TrainBatch(TypedDict):
-    subject: UserTensor
-    object: UserTensor
+    subject: Tensor
+    object: Tensor
     dec: Tensor
     
 class Batch(TypedDict):
-    subject: UserTensor
-    object: UserTensor
+    subject: Tensor
+    object: Tensor
 
 class TrainModelInput(TypedDict):
-    subject: UserD
-    object: UserD
+    subject: Tensor
+    object: Tensor
     dec: Literal[0, 1]
 
 class ModelOutput(TypedDict):
     probs: Tensor
     
 class InfModelInput(TypedDict):
-    subject: UserD
-    object: UserD
+    subject: Tensor
+    object: Tensor
 
 class InfModelOutput(TypedDict):
     predicts: List[Literal[0, 1]]

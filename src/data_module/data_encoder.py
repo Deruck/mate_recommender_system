@@ -34,11 +34,13 @@ class ZScoreDataEncoder(BaseDataEncoder):
         return self.transform(user_dict)
             
     def transform(self, user_dict: UserDict) -> UserDict:
-        for user in user_dict.values():
+        for id, user in user_dict.items():
             user_dict_form = user.dict()
             for variable in NUMERICAL_VARIABLES:
                 user_dict_form[variable] = (user_dict_form[variable] - self.__variable_mean_std_dict[variable].mean) / self.__variable_mean_std_dict[variable].std
-                user = User(**user_dict_form)
+            for variable in ["race", "field_cd", "goal", "career_c"]: 
+                user_dict_form[variable] -= 1
+            user_dict[id] = User(**user_dict_form)
         return user_dict
     
 

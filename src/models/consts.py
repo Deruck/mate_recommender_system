@@ -4,6 +4,8 @@ class MODEL(Enum):
     DNN = "dnn"
     XGB = "xgboost"
     LR = "lr"
+    EBDDNN = "ebd_dnn"
+    FORK = "fork"
     
 class DL_MODEL(Enum):
     DNN = "dnn"

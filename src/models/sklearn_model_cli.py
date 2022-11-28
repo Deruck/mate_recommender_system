@@ -7,6 +7,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from json import dumps
 import pickle
+import shutil
 
 from data_module import BaseDataModule
 from data_module.entities import DateList, UserDict
@@ -22,7 +23,7 @@ logger = LoggerManager.get_logger()
 class SKLModelCli(BaseModelCli):
     
     def __init__(self, model: MODEL):
-        self._model_name = model.value
+        self._model_name: str = model.value
         self._model = get_sklearn_model(model)
         
     def train(self, model_args: DL_ModelArgs, data_module: BaseDataModule, model_save_dir):
@@ -53,10 +54,15 @@ class SKLModelCli(BaseModelCli):
             """
         )
         logger.info(f"best {self._model_name} estimator acc: {acc:.4f}")
+        model_save_dir = model_save_dir / self._model_name
+        if not model_save_dir.exists():
+            model_save_dir.mkdir()
         save_path = model_save_dir /f"{self._model_name}.bin"
         logger.info(f"save model at {save_path}")
         with open(save_path, "wb") as f: 
             pickle.dump(best_model, f)
+        log_file = LoggerManager.get_log_file()
+        shutil.copy(log_file, model_save_dir / "train_log.log")
         
     
     def load_model(self, model_save_path: FilePath):

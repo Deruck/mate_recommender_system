@@ -1,0 +1,14 @@
+2022-11-28 22:43:01 - data_module.py[line:35] - INFO: normalizing data...
+2022-11-28 22:43:03 - sklearn_model_cli.py[line:30] - INFO: training model: xgboost
+2022-11-28 22:47:04 - sklearn_model_cli.py[line:51] - INFO: best model params
+            {
+  "eta": 0.05,
+  "gamma": 0,
+  "lambda": 1.15,
+  "max_depth": 5,
+  "n_estimators": 5300,
+  "subsample": 0.85
+}
+            
+2022-11-28 22:47:04 - sklearn_model_cli.py[line:56] - INFO: best xgboost estimator acc: 0.6660
+2022-11-28 22:47:04 - sklearn_model_cli.py[line:61] - INFO: save model at out/models/xgboost/xgboost.bin

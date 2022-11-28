@@ -1,18 +1,23 @@
 from torch.utils.data import Dataset
 from typing import Dict
+from torch import Tensor
+import torch
 
-from entities import UserDict, DateList, TrainModelInput, InfModelInput, UserId, UserD
+from entities import UserDict, DateList, TrainModelInput, InfModelInput, UserId, UserD, User
 
 class BaseDataset(Dataset):
     def __init__(self, date_list: DateList, user_dict: UserDict) -> None: 
         self._date_list = date_list
-        self._user_dict: Dict[UserId, UserD] = {user_id: user.dict() for user_id, user in user_dict.items()} # type: ignore
+        self._user_dict: Dict[UserId, Tensor] = {user_id: self._user_to_tensor(user) for user_id, user in user_dict.items()}
     
     def __getitem__(self, index: int):
         raise NotImplementedError()
     
     def __len__(self):
         return len(self._date_list)
+    
+    def _user_to_tensor(self, user: User) -> Tensor:
+        return torch.tensor([value for value in user.dict().values()]).to(torch.float32)
 
 
 class TrainDataset(BaseDataset):

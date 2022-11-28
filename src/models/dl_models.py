@@ -4,12 +4,12 @@ from abc import ABCMeta, abstractmethod
 from torch import nn, Tensor
 from typing import Dict, List, Callable, Type
 import torch
-from numpy import vectorize
 from enum import Enum
+from torch import sigmoid
 
 from utils import warmup_linear_decay_scheduler_factory, LoggerManager
 from data_module.entities import TrainBatch, ModelOutput, Batch
-from model_arguments import DL_ModelArgs
+from model_arguments import DL_ModelArgs, EBDDNN_ModelArgs, FORK_ModelArgs
 from consts import MODEL
 
 logger = LoggerManager.get_logger()
@@ -25,38 +25,21 @@ class BaseModel(LightningModule):
     
     def __init__(
         self,
-        train_args: DL_ModelArgs,
-        train_sample_size: int
+        model_args: DL_ModelArgs
     ):
-        self._train_args = train_args
-        self._train_sample_size = train_sample_size
+        super().__init__()
+        self._model_args = model_args
         self._ce_loss = nn.BCELoss()
-        self._probs_to_predicts: Callable[[Tensor], Tensor] = vectorize(lambda x: 0 if x < 0.5 else 1)
     
     def configure_optimizers(self):
         optimizer = AdamW(
             self.parameters(),
-            lr = self._train_args.learning_rate,
+            lr = self._model_args.learning_rate,
             eps=1e-8,
             correct_bias=True
         )
-        scheduler = warmup_linear_decay_scheduler_factory(
-            optimizer=optimizer,
-            warm_up_epoch=self._train_args.warmup_epochs,
-            decay_epoch=self._train_args.epochs - 1,
-            epoch=self._train_args.epochs,
-            train_data_length=self._train_sample_size,
-            batch_size=self._train_args.batch_size,
-            min_lr=1e-8
-        )
-        scheduler_config = {
-            "scheduler": scheduler,
-            "interval": "step",
-            "frequency": 1
-        }
         return {
             "optimizer": optimizer,
-            "lr_scheduler": scheduler_config
         }
     
     #############################################################################################
@@ -64,10 +47,9 @@ class BaseModel(LightningModule):
         
     def training_step(self, batch: TrainBatch, batch_idx: int):
         probs = self.forward(Batch(subject=batch["subject"], object=batch["object"]))["probs"]
-        loss = self._ce_loss(probs, batch["dec"])
-        lr = self.lr_schedulers().get_last_lr()[-1] # type: ignore
+        dec = batch["dec"].to(torch.float32)
+        loss = self._ce_loss(probs, dec)
         metrics = {
-            "lr": lr,
             "train_loss": loss,
         }
         self.log_dict(metrics)
@@ -81,10 +63,11 @@ class BaseModel(LightningModule):
     
     def validation_step(self, batch: TrainBatch, batch_idx: int):
         probs = self.forward(Batch(subject=batch["subject"], object=batch["object"]))["probs"]
-        loss: Tensor = self._ce_loss(probs, batch["dec"])
-        predicts = self._probs_to_predicts(probs)
-        acc_num = torch.eq(predicts, probs)
-        batch_size = len(batch["dec"])
+        dec = batch["dec"].to(torch.float32)
+        loss: Tensor = self._ce_loss(probs, dec)
+        predicts = (probs > 0.5).to(torch.float32)
+        acc_num = torch.eq(predicts, dec).sum()
+        batch_size = torch.tensor(dec.shape[0])
         return {"loss": loss, "acc_num": acc_num, "batch_size": batch_size} 
     
     def validation_epoch_end(self, validation_step_outputs: List[Dict[str, Tensor]]) -> None:
@@ -106,13 +89,12 @@ class BaseModel(LightningModule):
     
     def predict_step(self, batch: Batch, batch_idx: int, dataloader_idx: int = 0) -> List[int]:
         probs = self.forward(Batch(subject=batch["subject"], object=batch["object"]))["probs"]
-        prodicts: List[int] = self._probs_to_predicts(probs).int().tolist()
-        return prodicts
-    
-    def on_predict_epoch_end(self, results: List[List[int]]) -> List[int]:
-        """聚合每个batch的预测结果"""
-        predicts = sum(results, [])
+        predicts: List[int] = (probs > 0.5).int().tolist()
         return predicts
+    
+    def on_predict_epoch_end(self, results):
+        """聚合每个batch的预测结果"""
+        results[0] = sum(results[0], [])
     
     #############################################################################################
     ##################################### abstract #############################################
@@ -125,9 +107,123 @@ class BaseModel(LightningModule):
 #############################################################################################
 
 class DNN(BaseModel):
+    def __init__(self, model_args: DL_ModelArgs, feature_num: int):
+        super().__init__(model_args)
+        self._dnn = nn.Sequential(
+            nn.Linear(2 * feature_num, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 2048),
+            nn.ReLU(inplace=True),
+            nn.Linear(2048, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 32),
+            nn.ReLU(inplace=True),
+            nn.Linear(32, 1),
+        )
     
-    def forward(self, batch: Batch):
-        return torch.zeros_like(batch["subject"]["age"])
+    def forward(self, batch: Batch) -> ModelOutput:
+        input = torch.concat([batch["subject"], batch["object"]], 1)
+        logits  = self._dnn.forward(input)
+        probs = sigmoid(logits)
+        probs = probs.reshape(-1)
+        return ModelOutput(probs = probs)
+
+
+class EBDDNN(BaseModel):
+    
+    def __init__(self, model_args: EBDDNN_ModelArgs, cate_feature_dict: Dict[int, int], feature_num: int):
+        super().__init__(model_args)
+        self._cate_feature_dict = cate_feature_dict
+        self._embeddings = nn.ModuleList([nn.Embedding(dim, model_args.embedding_size) for dim in self._cate_feature_dict.values()])
+        self._feature_num = feature_num
+        self._num_feature_num = feature_num - len(cate_feature_dict)
+        self._cate_embedding_num = len(cate_feature_dict) * model_args.embedding_size
+        self._cate_fea_idx = list(self._cate_feature_dict.keys())
+        self._num_fea_idx = list(set(range(self._feature_num)).difference(set(self._cate_fea_idx)))
+        self._dnn = nn.Sequential(
+            nn.Linear(2 * (self._num_feature_num + self._cate_embedding_num), 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 2048),
+            nn.ReLU(inplace=True),
+            nn.Linear(2048, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 32),
+            nn.ReLU(inplace=True),
+            nn.Linear(32, 1),
+        )
+        
+    
+    def forward(self, batch: Batch) -> ModelOutput:
+        sub_cate_features, sub_num_features = self.__splite_cate_num(batch["subject"])
+        obj_cate_features, obj_num_features = self.__splite_cate_num(batch["object"])
+        sub_cate_embeddings = torch.concat([embedding(sub_cate_features[:, idx].int()) for idx, embedding in enumerate(self._embeddings)], 1)
+        obj_cate_embeddings = torch.concat([embedding(obj_cate_features[:, idx].int()) for idx, embedding in enumerate(self._embeddings)], 1)
+        sub_input = torch.concat([sub_num_features, sub_cate_embeddings], 1)
+        obj_input = torch.concat([obj_num_features, obj_cate_embeddings], 1)
+        input = torch.concat([sub_input, obj_input], 1)
+        logits  = self._dnn.forward(input)
+        probs = sigmoid(logits)
+        probs = probs.reshape(-1)
+        return ModelOutput(probs = probs)
+    
+    
+    def __splite_cate_num(self, user_tensor: Tensor):
+        return user_tensor[:, self._cate_fea_idx], user_tensor[:, self._num_fea_idx]
+        
+class FORK(BaseModel):
+    
+    def __init__(self, model_args: FORK_ModelArgs, cate_feature_dict: Dict[int, int], feature_num: int):
+        super().__init__(model_args)
+        self._cate_feature_dict = cate_feature_dict
+        self._embeddings = nn.ModuleList([nn.Embedding(dim, model_args.embedding_size) for dim in self._cate_feature_dict.values()])
+        self._feature_num = feature_num
+        self._num_feature_num = feature_num - len(cate_feature_dict)
+        self._cate_embedding_num = len(cate_feature_dict) * model_args.embedding_size
+        self._cate_fea_idx = list(self._cate_feature_dict.keys())
+        self._num_fea_idx = list(set(range(self._feature_num)).difference(set(self._cate_fea_idx)))
+        self._dnn = nn.Sequential(
+            nn.Linear((self._num_feature_num + self._cate_embedding_num), 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 2048),
+            nn.ReLU(inplace=True),
+        )
+        self._dnn_sub = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 64),
+        )
+        self._dnn_obj = nn.Sequential(
+            nn.Linear(2048, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 64),
+        )
+        
+    def forward(self, batch: Batch) -> ModelOutput:
+        sub_cate_features, sub_num_features = self.__splite_cate_num(batch["subject"])
+        obj_cate_features, obj_num_features = self.__splite_cate_num(batch["object"])
+        sub_cate_embeddings = torch.concat([embedding(sub_cate_features[:, idx].int()) for idx, embedding in enumerate(self._embeddings)], 1)
+        obj_cate_embeddings = torch.concat([embedding(obj_cate_features[:, idx].int()) for idx, embedding in enumerate(self._embeddings)], 1)
+        sub_input = torch.concat([sub_num_features, sub_cate_embeddings], 1)
+        obj_input = torch.concat([obj_num_features, obj_cate_embeddings], 1)
+        sub_logits  = self._dnn_sub.forward(self._dnn.forward(sub_input))
+        obj_logits  = self._dnn_obj.forward(self._dnn.forward(obj_input))
+        logits = torch.mul(sub_logits, obj_logits).sum(dim=1)
+        probs = sigmoid(logits)
+        return ModelOutput(probs=probs)
+    
+    
+    def __splite_cate_num(self, user_tensor: Tensor):
+        return user_tensor[:, self._cate_fea_idx], user_tensor[:, self._num_fea_idx]
+
+
 
 #############################################################################################
 ## api
