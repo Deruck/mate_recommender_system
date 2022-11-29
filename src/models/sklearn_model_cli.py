@@ -1,9 +1,10 @@
 from pydantic import FilePath
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict
 from numpy.typing import NDArray
 import numpy as np
 from copy import deepcopy
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import accuracy_score
 from json import dumps
 import pickle
@@ -11,7 +12,7 @@ import shutil
 
 from data_module import BaseDataModule
 from data_module.entities import DateList, UserDict
-from utils import LoggerManager
+from utils import LoggerManager, evaluate_model
 
 from model_cli_base import BaseModelCli
 from consts import MODEL
@@ -33,8 +34,9 @@ class SKLModelCli(BaseModelCli):
         user_dict.update(data_module.val_encoded_user_info)
         test_date_list = data_module.test_date_list
         test_user_dict = data_module.test_encoded_user_info
-        x, y = self.__get_model_input(date_list, user_dict)
-        x_test, y_test = self.__get_model_input(test_date_list, test_user_dict)
+        cate_feature_dict = data_module.cate_feature_dict
+        x, y = self.__get_model_input(date_list, user_dict, cate_feature_dict)
+        x_test, y_test = self.__get_model_input(test_date_list, test_user_dict, cate_feature_dict)
         gs = GridSearchCV(
             estimator=self._model.model_cls(**self._model.other_params), # type: ignore
             param_grid=self._model.gs_params,
@@ -46,14 +48,13 @@ class SKLModelCli(BaseModelCli):
         gs.fit(x, y)
         best_model: ClassifierProto = gs.best_estimator_ # type: ignore
         best_model.fit(x, y)
-        predict = best_model.predict(x_test)
-        acc = accuracy_score(predict, y_test)
         logger.info(
             f"""best model params
             {dumps(gs.best_params_, indent=2)}
             """
         )
-        logger.info(f"best {self._model_name} estimator acc: {acc:.4f}")
+        probs = best_model.predict_proba(x_test)[:, 1].tolist()
+        evaluate_model(probs, y_test.tolist())
         model_save_dir = model_save_dir / self._model_name
         if not model_save_dir.exists():
             model_save_dir.mkdir()
@@ -71,15 +72,28 @@ class SKLModelCli(BaseModelCli):
     def inference(self, date_list: DateList, user_dict: UserDict) -> DateList:
         return super().inference(date_list, user_dict)
     
-    def __get_model_input(self, date_list: DateList, user_dict: UserDict) -> Tuple[np.ndarray, np.ndarray]:
-        input_list: List[List[float]] = []
+    def __get_model_input(self, date_list: DateList, user_dict: UserDict, cate_feature_dict: Dict[int, int]) -> Tuple[np.ndarray, np.ndarray]:
+        sub_input_list: List[List[float]] = []
+        obj_input_list: List[List[float]] = []
         label_list: List[Optional[int]] = []
         for date in date_list:
             sub_value_array: NDArray[np.float32] = np.array(self.__id_to_value_list(date.iid, user_dict))
             obj_value_array: NDArray[np.float32] = np.array(self.__id_to_value_list(date.pid, user_dict))
-            input_list.append((sub_value_array - obj_value_array).tolist())
+            sub_input_list.append(sub_value_array.tolist())
+            obj_input_list.append(obj_value_array.tolist())
             label_list.append(date.dec)
-        return np.array(input_list), np.array(label_list)
+        sub_input_array = self.__onehot_encode(np.array(sub_input_list), cate_feature_dict)
+        obj_input_array = self.__onehot_encode(np.array(obj_input_list), cate_feature_dict)
+        return sub_input_array - obj_input_array, np.array(label_list)
         
     def __id_to_value_list(self, id: int, user_dict: UserDict) -> List[float]:
         return [value for value in user_dict[id].dict().values()]
+    
+    def __onehot_encode(self, x: np.ndarray, cate_feature_dict: Dict[int, int]) -> np.ndarray:
+        cate_fea_idx = list(cate_feature_dict.keys())
+        num_fea_idx = list(set(range(x.shape[1])).difference(set(cate_fea_idx)))
+        num_features = x[:, num_fea_idx] # type: ignore
+        cate_features = x[:, cate_fea_idx] # type: ignore
+        encoder = OneHotEncoder(categories=[range(unique_num) for unique_num in cate_feature_dict.values()], sparse=False) # type: ignore
+        cate_features_encoded = encoder.fit_transform(cate_features)
+        return np.concatenate([num_features, cate_features_encoded], axis=1)

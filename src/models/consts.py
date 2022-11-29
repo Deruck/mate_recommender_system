@@ -6,6 +6,7 @@ class MODEL(Enum):
     LR = "lr"
     EBDDNN = "ebd_dnn"
     FORK = "fork"
+    TEST_MODEL = "test_model"
     
 class DL_MODEL(Enum):
     DNN = "dnn"

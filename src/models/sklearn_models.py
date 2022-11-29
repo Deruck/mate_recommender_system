@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractproperty
 from sklearn.base import ClassifierMixin
 from typing import Type, Dict, List, Protocol
 from xgboost import XGBClassifier
+from sklearn.linear_model import LogisticRegression
 import numpy as np
 
 from consts import MODEL
@@ -54,6 +55,26 @@ class XGBoost(BaseSKLModel):
             "lambda": [1.1, 1.15, 1.2],
             "subsample": [0.85]
         }
+        
+class LR(BaseSKLModel):
+    
+    @property
+    def model_cls(self) -> Type[ClassifierMixin]:
+        return LogisticRegression
+    
+    @property
+    def other_params(self) -> Dict[str, float]:
+        return {
+            'n_jobs': -1,
+            "verbose": 0,
+        }
+        
+    @property
+    def gs_params(self) -> Dict[str, List]:
+        return {
+            "penalty": ["l1", "l2", "none"],
+            "C": [1, 1.2, 1.4]
+        }
     
 #############################################################################################
 ## APIs
@@ -62,5 +83,7 @@ class XGBoost(BaseSKLModel):
 def get_sklearn_model(model: MODEL) -> BaseSKLModel:
     if model == MODEL.XGB:
         return XGBoost()
+    elif model == MODEL.LR:
+        return LR()
     else:
         raise Exception("model not supported")

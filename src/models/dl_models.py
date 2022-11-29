@@ -5,11 +5,11 @@ from torch import nn, Tensor
 from typing import Dict, List, Callable, Type
 import torch
 from enum import Enum
-from torch import sigmoid
+from torch import sigmoid, cosine_similarity
 
 from utils import warmup_linear_decay_scheduler_factory, LoggerManager
 from data_module.entities import TrainBatch, ModelOutput, Batch
-from model_arguments import DL_ModelArgs, EBDDNN_ModelArgs, FORK_ModelArgs
+from model_arguments import DL_ModelArgs, EBDDNN_ModelArgs, FORK_ModelArgs, TEST_ModelArgs
 from consts import MODEL
 
 logger = LoggerManager.get_logger()
@@ -87,10 +87,9 @@ class BaseModel(LightningModule):
     #############################################################################################
     ##################################### inference #############################################
     
-    def predict_step(self, batch: Batch, batch_idx: int, dataloader_idx: int = 0) -> List[int]:
+    def predict_step(self, batch: Batch, batch_idx: int, dataloader_idx: int = 0) -> List[float]:
         probs = self.forward(Batch(subject=batch["subject"], object=batch["object"]))["probs"]
-        predicts: List[int] = (probs > 0.5).int().tolist()
-        return predicts
+        return probs.tolist()
     
     def on_predict_epoch_end(self, results):
         """聚合每个batch的预测结果"""
@@ -143,9 +142,9 @@ class EBDDNN(BaseModel):
         self._cate_fea_idx = list(self._cate_feature_dict.keys())
         self._num_fea_idx = list(set(range(self._feature_num)).difference(set(self._cate_fea_idx)))
         self._dnn = nn.Sequential(
-            nn.Linear(2 * (self._num_feature_num + self._cate_embedding_num), 1024),
+            nn.Linear(2 * (self._num_feature_num + self._cate_embedding_num), 4096),
             nn.ReLU(inplace=True),
-            nn.Linear(1024, 2048),
+            nn.Linear(4096, 2048),
             nn.ReLU(inplace=True),
             nn.Linear(2048, 1024),
             nn.ReLU(inplace=True),
@@ -215,8 +214,9 @@ class FORK(BaseModel):
         obj_input = torch.concat([obj_num_features, obj_cate_embeddings], 1)
         sub_logits  = self._dnn_sub.forward(self._dnn.forward(sub_input))
         obj_logits  = self._dnn_obj.forward(self._dnn.forward(obj_input))
-        logits = torch.mul(sub_logits, obj_logits).sum(dim=1)
-        probs = sigmoid(logits)
+        similarity = torch.mul(sub_logits, obj_logits).sum(dim=1)
+        # similarity = cosine_similarity(sub_logits, obj_logits)
+        probs = sigmoid(similarity)
         return ModelOutput(probs=probs)
     
     
@@ -224,16 +224,106 @@ class FORK(BaseModel):
         return user_tensor[:, self._cate_fea_idx], user_tensor[:, self._num_fea_idx]
 
 
-
-#############################################################################################
-## api
-#############################################################################################
-
-def get_dl_model(model: MODEL) -> Type[BaseModel]:
-    if model == MODEL.DNN:
-        return DNN
-    else:
-        raise Exception("model not supported")
+class SENet(nn.Module):
+    """FM part"""
+ 
+    def __init__(self, embedding_size: int, feature_num: int, cate_feature_num: int):
+        super().__init__()
+        self._embedding_size = embedding_size
+        self._cate_feature_num = cate_feature_num
+        self._feature_num = feature_num
+        self._dnn = nn.Sequential(
+            nn.Linear(feature_num, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, feature_num),
+            nn.ReLU(inplace=True)
+        )
+        self._compress_matrix = self._make_compress_matrix().cuda()
+        self._decompression_matrix = self._make_decompression_matrix().cuda()
+ 
+    def forward(self, inputs: Tensor):  #32*221
+        z = torch.matmul(inputs, self._compress_matrix)
+        z = self._dnn.forward(z)
+        return torch.matmul(z, self._decompression_matrix)
+    
+    def _make_compress_matrix(self) -> Tensor: 
+        res_list = []
+        for i in range(self._feature_num):
+            if i < self._cate_feature_num:
+                rows = torch.zeros((self._embedding_size, self._feature_num))
+                rows[:, i] = 1 / self._embedding_size
+            else:
+                rows = torch.zeros((1, self._feature_num))
+                rows[:, i] = 1
+            res_list.append(rows)
+        return torch.concat(res_list, dim=0)
+    
+    def _make_decompression_matrix(self) -> Tensor: 
+        res_list = []
+        for i in range(self._feature_num):
+            if i < self._cate_feature_num:
+                rows = torch.zeros((self._embedding_size, self._feature_num))
+            else:
+                rows = torch.zeros((1, self._feature_num))
+            rows[:, i] = 1
+            res_list.append(rows)
+        return torch.concat(res_list, dim=0).T
+        
+        
+class TEST(BaseModel):
+    
+    def __init__(self, model_args: FORK_ModelArgs, cate_feature_dict: Dict[int, int], feature_num: int):
+        super().__init__(model_args)
+        self._cate_feature_dict = cate_feature_dict
+        self._feature_num = feature_num
+        self._num_feature_num = feature_num - len(cate_feature_dict)
+        self._cate_embedding_num = len(cate_feature_dict) * model_args.embedding_size
+        self._total_feature_num = self._num_feature_num + self._cate_embedding_num
+        self._cate_fea_idx = list(self._cate_feature_dict.keys())
+        self._num_fea_idx = list(set(range(self._feature_num)).difference(set(self._cate_fea_idx)))
+        self._embeddings = nn.ModuleList([nn.Embedding(dim, model_args.embedding_size) for dim in self._cate_feature_dict.values()])
+        self._senet_sub = SENet(model_args.embedding_size, feature_num, len(cate_feature_dict))
+        self._senet_obj = SENet(model_args.embedding_size, feature_num, len(cate_feature_dict))
+        self._dnn_sub = nn.Sequential(
+            nn.Linear((self._total_feature_num), 2048),
+            nn.ReLU(inplace=True),
+            nn.Linear(2048, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 64),
+        )
+        self._dnn_obj = nn.Sequential(
+            nn.Linear((self._total_feature_num), 2048),
+            nn.ReLU(inplace=True),
+            nn.Linear(2048, 1024),
+            nn.ReLU(inplace=True),
+            nn.Linear(1024, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 64),
+        )
+        
+    def forward(self, batch: Batch) -> ModelOutput:
+        sub_cate_features, sub_num_features = self.__splite_cate_num(batch["subject"])
+        obj_cate_features, obj_num_features = self.__splite_cate_num(batch["object"])
+        sub_cate_embeddings = torch.concat([embedding(sub_cate_features[:, idx].int()) for idx, embedding in enumerate(self._embeddings)], 1)
+        obj_cate_embeddings = torch.concat([embedding(obj_cate_features[:, idx].int()) for idx, embedding in enumerate(self._embeddings)], 1)
+        sub_input = torch.concat([sub_cate_embeddings, sub_num_features], 1)
+        obj_input = torch.concat([obj_cate_embeddings, obj_num_features], 1)
+        sub_weight = self._senet_sub.forward(sub_input)
+        obj_weight = self._senet_sub.forward(obj_input)
+        sub_input = torch.mul(sub_input, sub_weight)
+        obj_input = torch.mul(obj_input, obj_weight)
+        sub_logits  = self._dnn_sub.forward(sub_input)
+        obj_logits  = self._dnn_obj.forward(obj_input)
+        # similarity = torch.mul(sub_logits, obj_logits).sum(dim=1)
+        similarity = cosine_similarity(sub_logits, obj_logits)
+        probs = sigmoid(similarity)
+        return ModelOutput(probs=probs)
+    
+    
+    def __splite_cate_num(self, user_tensor: Tensor):
+        return user_tensor[:, self._cate_fea_idx], user_tensor[:, self._num_fea_idx]
 
 
 

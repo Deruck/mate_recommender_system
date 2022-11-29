@@ -1,0 +1,23 @@
+2022-11-29 22:16:38 - data_module.py[line:35] - INFO: normalizing data...
+2022-11-29 22:16:40 - sklearn_model_cli.py[line:31] - INFO: training model: lr
+2022-11-29 22:16:46 - sklearn_model_cli.py[line:51] - INFO: best model params
+            {
+  "C": 1.2,
+  "penalty": "l2"
+}
+            
+2022-11-29 22:16:46 - evaluation.py[line:32] - INFO: 
+    
+    ===============================
+           Model Evaluation
+    -------------------------------
+    - accuracy: 0.6383
+    - f1-score: 0.5201
+    - auc-score: 0.6746
+    - confusion matrix: 
+        tp:   311    fp:   190
+        fn:   384    tn:   702
+    ===============================
+    
+    
+2022-11-29 22:16:46 - sklearn_model_cli.py[line:62] - INFO: save model at out/models/lr/lr.bin

@@ -1,14 +1,27 @@
-2022-11-28 22:43:01 - data_module.py[line:35] - INFO: normalizing data...
-2022-11-28 22:43:03 - sklearn_model_cli.py[line:30] - INFO: training model: xgboost
-2022-11-28 22:47:04 - sklearn_model_cli.py[line:51] - INFO: best model params
+2022-11-29 22:02:42 - data_module.py[line:35] - INFO: normalizing data...
+2022-11-29 22:02:44 - sklearn_model_cli.py[line:31] - INFO: training model: xgboost
+2022-11-29 22:08:44 - sklearn_model_cli.py[line:51] - INFO: best model params
             {
   "eta": 0.05,
   "gamma": 0,
-  "lambda": 1.15,
+  "lambda": 1.2,
   "max_depth": 5,
-  "n_estimators": 5300,
+  "n_estimators": 5200,
   "subsample": 0.85
 }
             
-2022-11-28 22:47:04 - sklearn_model_cli.py[line:56] - INFO: best xgboost estimator acc: 0.6660
-2022-11-28 22:47:04 - sklearn_model_cli.py[line:61] - INFO: save model at out/models/xgboost/xgboost.bin
+2022-11-29 22:08:44 - evaluation.py[line:32] - INFO: 
+    
+    ===============================
+           Model Evaluation
+    -------------------------------
+    - accuracy: 0.6654
+    - f1-score: 0.5986
+    - auc-score: 0.7257
+    - confusion matrix: 
+        tp:   396    fp:   232
+        fn:   299    tn:   660
+    ===============================
+    
+    
+2022-11-29 22:08:44 - sklearn_model_cli.py[line:62] - INFO: save model at out/models/xgboost/xgboost.bin

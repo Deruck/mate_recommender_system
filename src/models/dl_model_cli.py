@@ -13,9 +13,9 @@ from data_module.entities import DateList, UserDict
 
 from model_cli_base import BaseModelCli
 from consts import MODEL
-from dl_models import DNN, EBDDNN, FORK
+from dl_models import DNN, EBDDNN, FORK, TEST
 from model_arguments import DL_ModelArgs
-from utils import LoggerManager
+from utils import LoggerManager, evaluate_model
 
 logger = LoggerManager.get_logger()
 
@@ -75,6 +75,12 @@ class DLModelCli(BaseModelCli):
                 data_module.cate_feature_dict,
                 data_module.feature_num
             )
+        elif self._model == MODEL.TEST_MODEL:
+            model = TEST(
+                model_args,             # type: ignore
+                data_module.cate_feature_dict,
+                data_module.feature_num
+            )
         else:
             raise Exception("model not supported")
             
@@ -83,13 +89,13 @@ class DLModelCli(BaseModelCli):
             train_dataloaders=data_module.train_dataloader(),
             val_dataloaders=data_module.val_dataloader()
         )
-        test_true_label = [date.dec for date in data_module.test_date_list]
-        output: List[Literal[0, 1]] = trainer.predict( # type: ignore
+        test_true_label: List[int] = [date.dec for date in data_module.test_date_list] # type: ignore
+        output: List[float] = trainer.predict( # type: ignore
             model=model,
             dataloaders=data_module.test_dataloader()
         )
-        test_acc = (np.array(test_true_label) == np.array(output)).mean()
-        logger.info(f"test_acc: {test_acc:.4f}")
+        evaluate_model(output, test_true_label)
+        
         log_file = LoggerManager.get_log_file()
         shutil.copy(log_file, model_save_dir / "train_log.log")
         
