@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="XAmNBGXt0AHOLajKv8Me" name="第 1 页">
-        <mxGraphModel dx="2111" dy="1204" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
+        <mxGraphModel dx="424" dy="339" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="4681" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -353,9 +353,6 @@
                 </mxCell>
                 <mxCell id="186" value="DNN" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fixedSize=1;size=40;" vertex="1" parent="1">
                     <mxGeometry x="1228.35" y="910" width="190" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="192" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="187" target="186">
-                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="187" value="object_logits&amp;nbsp;(2048)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
                     <mxGeometry x="1211.56" y="1004" width="223.59" height="30" as="geometry"/>
