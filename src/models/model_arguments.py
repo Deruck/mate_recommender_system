@@ -14,12 +14,12 @@ class SK_ModelArgs(BaseModelArgs):
 class DNNModelArgs(DL_ModelArgs):
     learning_rate = 1e-5
     epochs = 40
-    batch_size = 128
+    batch_size = 512
 
 class EBDDNN_ModelArgs(DL_ModelArgs):
     learning_rate = 1e-5
     epochs = 40
-    batch_size = 128
+    batch_size = 512
     embedding_size = 8
     
 class FORK_ModelArgs(DL_ModelArgs):

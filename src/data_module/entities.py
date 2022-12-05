@@ -66,7 +66,7 @@ class Date(BaseModel):
     """约会信息"""
     iid: UserId
     pid: UserId
-    dec: Optional[Literal[0, 1]]
+    dec: Optional[float]
 
 UserDict = Dict[UserId, User]
 DateList = List[Date]
@@ -215,7 +215,7 @@ class Batch(TypedDict):
 class TrainModelInput(TypedDict):
     subject: Tensor
     object: Tensor
-    dec: Literal[0, 1]
+    dec: float
 
 class ModelOutput(TypedDict):
     probs: Tensor
@@ -225,5 +225,5 @@ class InfModelInput(TypedDict):
     object: Tensor
 
 class InfModelOutput(TypedDict):
-    predicts: List[Literal[0, 1]]
+    predicts: List[float]
     probs: List[float]

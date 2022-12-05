@@ -64,6 +64,10 @@ class PathArgs(BaseArguments):
     @property
     def model_save_dir(self) -> DirectoryPath:
         return self.out_dir / "models"
+    
+    @property
+    def hyper_param_file_name(self) -> str:
+        return "hyper_param.json"
 
     def _arg_name(self):
         return "通用路径参数"
