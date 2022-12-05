@@ -72,9 +72,9 @@ class Recommender:
             score_dict[date.iid][date.pid] = date.dec # type: ignore
         res: Dict[UserId, Recommend] = {}
         for iid in score_dict.keys():
-            like = {pid: round(100 * score_dict[iid][pid], 4) for pid in score_dict[iid].keys()}
-            being_liked = {pid: round(100 * score_dict[pid][iid], 4) for pid in score_dict[iid].keys()}
-            match_score = {pid: round(100 * score_dict[iid][pid] * score_dict[pid][iid], 4) for pid in score_dict[iid].keys()}
+            like = {pid: round(100 * score_dict[iid][pid], 2) for pid in score_dict[iid].keys()}
+            being_liked = {pid: round(100 * score_dict[pid][iid], 2) for pid in score_dict[iid].keys()}
+            match_score = {pid: round(100 * score_dict[iid][pid] * score_dict[pid][iid], 2) for pid in score_dict[iid].keys()}
             res[iid] = Recommend(
                 like=self.__sort_score_dict(like, top_n=top_n), 
                 being_liked=self.__sort_score_dict(being_liked, top_n=top_n), 
@@ -91,8 +91,9 @@ class Recommender:
 if __name__ == "__main__":
     args = RecommenderArgs().parse_args()
     recommender = Recommender(args.model, args.path_args.data_encoder_file, args.path_args.model_save_dir)
-    user_dict = DataReader.load_user_dict(args.path_args.users_csv_file)
+    user_dict = DataReader.load_user_dict(args.path_args.unlabled_dates_csv_file)
+    # user_pool = DataReader.load_user_dict(args.path_args.users_csv_file)
+    # recommender.add_to_user_pool(user_pool)
     recommender.add_to_user_pool(user_dict)
-    subject_user_dict = dict(list(user_dict.items())[:20])
-    recommendation = recommender.recommend(subject_user_dict, 10)
-    json.dump(recommendation, open(args.path_args.out_dir / "recommendation.json", "w", encoding="utf-8"), indent=2, sort_keys=False)
+    recommendation = recommender.recommend(user_dict, 30)
+    json.dump(recommendation, open(args.path_args.out_dir / "recommendations.json", "w", encoding="utf-8"), indent=2, sort_keys=False)

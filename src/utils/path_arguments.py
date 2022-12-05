@@ -51,7 +51,7 @@ class PathArgs(BaseArguments):
     
     @property
     def unlabled_dates_csv_file(self) -> FilePath:
-        return self.pre_processed_data_dir / "dates.csv"
+        return self.pre_processed_data_dir / "recommend_users.csv"
     
     @property
     def users_csv_file(self) -> FilePath:
