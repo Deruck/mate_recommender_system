@@ -2,7 +2,10 @@
 
 > 数据源：https://tianchi.aliyun.com/competition/entrance/531825/information
 
-## 准备  
+
+## Get Started
+
+### 准备  
 
 - 适用版本：`python 3.8+`
 - 依赖安装
@@ -10,8 +13,6 @@
     pip install -r requirements.txt
     ```
 - 其中`pytorch`需要根据设备cuda版本自行安装
-
-## Get Started
 
 ### 训练  
 
