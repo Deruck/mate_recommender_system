@@ -17,10 +17,15 @@ class RecommenderArgs(BaseArguments):
     model: MODEL
     top: int
     
-    _input_file: Optional[FilePath]
+    _recommend_users: Optional[FilePath]
     @property
-    def input_file(self) -> FilePath:
-        return self._input_file if self._input_file is not None else self.path_args.unlabled_dates_csv_file 
+    def recommend_users(self) -> FilePath:
+        return self._recommend_users if self._recommend_users is not None else self.path_args.unlabled_dates_csv_file 
+    
+    _user_pool: Optional[FilePath]
+    @property
+    def user_pool(self) -> FilePath:
+        return self._user_pool if self._user_pool is not None else self.path_args.unlabled_dates_csv_file 
     
     _output_file: Optional[FilePath]
     @property
@@ -29,7 +34,8 @@ class RecommenderArgs(BaseArguments):
 
     def _add_args(self, parser) -> None:
         parser.add_argument("--model", type=MODEL, required=True, dest="model", choices=MODEL)
-        parser.add_argument("--input_file", dest="_input_file", type=Path, default=None)
+        parser.add_argument("--recommend_users", dest="_recommend_users", type=Path, default=None)
+        parser.add_argument("--user_pool", dest="_user_pool", type=Path, default=None)
         parser.add_argument("--output_file", dest="_output_file", type=Path, default=None)
         parser.add_argument("--top", type=int, default=5)
         
@@ -102,7 +108,8 @@ class Recommender:
 if __name__ == "__main__":
     args = RecommenderArgs().parse_args()
     recommender = Recommender(args.model, args.path_args.data_encoder_file, args.path_args.model_save_dir)
-    user_dict = DataReader.load_user_dict(args.input_file)
+    user_dict = DataReader.load_user_dict(args.recommend_users)
+    user_pool = DataReader.load_user_dict(args.user_pool)
     recommender.add_to_user_pool(user_dict)
     recommendation = recommender.recommend(user_dict, args.top)
     json.dump(recommendation, open(args.output_file, "w", encoding="utf-8"), indent=2, sort_keys=False)
