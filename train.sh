@@ -1,0 +1,1 @@
+python ./src/training_pipeline.py --model dnn

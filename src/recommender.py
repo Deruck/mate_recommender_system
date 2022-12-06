@@ -1,7 +1,8 @@
 import pickle
-from typing import Dict, List, Union, Sequence, NamedTuple, Callable, Tuple, TypedDict
+from typing import Dict, List, Union, Sequence, NamedTuple, Callable, Tuple, TypedDict, Optional
 from itertools import product
 from pydantic import FilePath, DirectoryPath
+from pathlib import Path
 
 from utils import BaseArguments, PathArgs
 from models import MODEL
@@ -13,14 +14,24 @@ import json
 class RecommenderArgs(BaseArguments):
     
     path_args: PathArgs
+    model: MODEL
+    top: int
     
-    _model: str
+    _input_file: Optional[FilePath]
     @property
-    def model(self) -> MODEL:
-        return MODEL(self._model)
+    def input_file(self) -> FilePath:
+        return self._input_file if self._input_file is not None else self.path_args.unlabled_dates_csv_file 
     
+    _output_file: Optional[FilePath]
+    @property
+    def output_file(self) -> FilePath:
+        return self._output_file if self._output_file is not None else self.path_args.out_dir / "recommendations.json"
+
     def _add_args(self, parser) -> None:
-        parser.add_argument("--model", type=str, required=True, dest="_model", choices=[item.value for item in MODEL])
+        parser.add_argument("--model", type=MODEL, required=True, dest="model", choices=MODEL)
+        parser.add_argument("--input_file", dest="_input_file", type=Path, default=None)
+        parser.add_argument("--output_file", dest="_output_file", type=Path, default=None)
+        parser.add_argument("--top", type=int, default=5)
         
 class Recommend(TypedDict):
     like: Dict[UserId, float]
@@ -91,9 +102,7 @@ class Recommender:
 if __name__ == "__main__":
     args = RecommenderArgs().parse_args()
     recommender = Recommender(args.model, args.path_args.data_encoder_file, args.path_args.model_save_dir)
-    user_dict = DataReader.load_user_dict(args.path_args.unlabled_dates_csv_file)
-    # user_pool = DataReader.load_user_dict(args.path_args.users_csv_file)
-    # recommender.add_to_user_pool(user_pool)
+    user_dict = DataReader.load_user_dict(args.input_file)
     recommender.add_to_user_pool(user_dict)
-    recommendation = recommender.recommend(user_dict, 30)
-    json.dump(recommendation, open(args.path_args.out_dir / "recommendations.json", "w", encoding="utf-8"), indent=2, sort_keys=False)
+    recommendation = recommender.recommend(user_dict, args.top)
+    json.dump(recommendation, open(args.output_file, "w", encoding="utf-8"), indent=2, sort_keys=False)
