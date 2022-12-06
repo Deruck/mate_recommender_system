@@ -28,8 +28,8 @@ bash ./train.sh
 - *XGBoost*: `xgboost`
 - *LR*: `lr`
 - *DNN*: `dnn`
-- *Embedding + DNN*: 'ebd_dnn'
-- *Embedding + FORK-DNN*: 'fork'
+- *Embedding + DNN*: `ebd_dnn`
+- *Embedding + FORK-DNN*: `fork`
 
 ### 推荐  
 
