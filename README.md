@@ -25,11 +25,11 @@ bash ./train.sh
 ```
 
 其中，模型对应的参数为（后续相同）：  
-- *XGBoost*: `xgboost`
-- *LR*: `lr`
-- *DNN*: `dnn`
-- *Embedding + DNN*: `ebd_dnn`
-- *Embedding + FORK-DNN*: `fork`
+- **XGBoost**: `xgboost`
+- **LR**: `lr`
+- **DNN**: `dnn`
+- **Embedding + DNN**: `ebd_dnn`
+- **Embedding + FORK-DNN**: `fork`
 
 ### 推荐  
 
@@ -69,13 +69,13 @@ bash ./recommend.sh
 ![fork](./docs/架构设计/fork.png)
 
 ### 评估结果  
-|*model*|*accuracy*|*f1*|*auc*|
+|**model**|**accuracy**|**f1**|**auc**|
 |:-----:|-------|----|----|
-|*LR*|0.6383|0.5201|0.6746|
-|*XGBoost*|0.6654|0.5986|0.7257|
-|*DNN*|0.6660|0.6165|0.7227|
-|*Embedding + DNN*|0.6931|0.6150|0.7556|
-|*Embedding + FORK-DNN*|0.7454|0.7106|0.8032|
+|**LR**|0.6383|0.5201|0.6746|
+|**XGBoost**|0.6654|0.5986|0.7257|
+|**DNN**|0.6660|0.6165|0.7227|
+|**Embedding + DNN**|0.6931|0.6150|0.7556|
+|**Embedding + FORK-DNN**|0.7454|0.7106|0.8032|
 
 
 ## 推荐
